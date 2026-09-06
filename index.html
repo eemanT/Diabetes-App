@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Diabetes Prediction — ANN + ANFIS + Explainable AI</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🩺</div>
+    <div>
+      <h1>Diabetes Prediction</h1>
+      <p class="subtitle">ANN · ANFIS · Explainable AI &nbsp;—&nbsp; Pima Indians Diabetes Database</p>
+    </div>
+  </div>
+  <div class="meta">
+    <span class="pill">Bahria University · 8A</span>
+    <span class="pill">NN &amp; Fuzzy Logic</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="predict">🔮 Predict</button>
+  <button class="tab" data-tab="metrics">📊 Model Performance</button>
+  <button class="tab" data-tab="dataset">📁 Dataset</button>
+  <button class="tab" data-tab="rules">🧩 Fuzzy Rules</button>
+  <button class="tab" data-tab="about">ℹ️ About</button>
+</nav>
+
+<main>
+
+<!-- ========================= PREDICT ========================= -->
+<section id="predict" class="tab-panel active">
+  <div class="grid-2">
+    <div class="card">
+      <h2>Patient features</h2>
+      <p class="muted">Enter values or load a real patient from the dataset.</p>
+
+      <div class="row-actions">
+        <button id="loadSample" class="btn-secondary">Load real patient from dataset</button>
+        <input type="number" id="sampleIdx" min="0" max="767" value="0" />
+        <span class="hint">(0–767)</span>
+      </div>
+
+      <form id="predictForm" class="features-form"></form>
+
+      <div class="btn-row">
+        <button id="predictBtn" class="btn-primary">Predict</button>
+        <button id="clearBtn" class="btn-secondary">Clear</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Prediction</h2>
+      <div id="predictionResults">
+        <p class="muted center">Enter features and click <strong>Predict</strong> to see results from both models.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="explainCard" style="display:none;">
+    <h2>Explanation (Explainable AI)</h2>
+    <div class="grid-2">
+      <div>
+        <h3>SHAP — Why the ANN made this prediction</h3>
+        <p class="muted">Positive bars push toward <em>diabetic</em>, negative bars push toward <em>non-diabetic</em>.</p>
+        <div class="chart-box tall"><canvas id="shapChart"></canvas></div>
+      </div>
+      <div>
+        <h3>Top firing fuzzy rules (ANFIS)</h3>
+        <p class="muted">The rules that most influenced ANFIS's prediction for this patient.</p>
+        <div id="topRules"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= METRICS ========================= -->
+<section id="metrics" class="tab-panel">
+  <div class="card">
+    <h2>Test-set performance</h2>
+    <p class="muted">Computed on 154 held-out patients (20% stratified split).</p>
+    <div id="metricsGrid" class="metrics-grid"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>Metric comparison</h2>
+      <div class="chart-box"><canvas id="metricsChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>ROC curves</h2>
+      <div class="chart-box"><canvas id="rocChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>Confusion matrix — ANN</h2>
+      <div id="cmAnn" class="cm"></div>
+    </div>
+    <div class="card">
+      <h2>Confusion matrix — ANFIS</h2>
+      <div id="cmAnfis" class="cm"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>Training history — ANN</h2>
+      <div class="chart-box"><canvas id="annLossChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Training history — ANFIS</h2>
+      <div class="chart-box"><canvas id="anfisLossChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Global feature importance (mean |SHAP|)</h2>
+    <p class="muted">Average impact of each feature on the ANN's predictions across the test set.</p>
+    <div class="chart-box tall"><canvas id="globalImportanceChart"></canvas></div>
+  </div>
+</section>
+
+<!-- ========================= DATASET ========================= -->
+<section id="dataset" class="tab-panel">
+  <div class="card">
+    <h2>Pima Indians Diabetes Database</h2>
+    <p>Source: UCI ML Repository / Kaggle. 768 female patients, ≥ 21 years, of Pima Indian heritage.</p>
+    <div id="datasetStats" class="metrics-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Class balance</h2>
+    <div class="chart-box doughnut"><canvas id="classChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Preprocessing — biologically impossible zeros (Phase 1)</h2>
+    <p class="muted">These zeros were treated as missing and imputed with the column median.</p>
+    <div id="zeroImputation"></div>
+  </div>
+
+  <div class="card">
+    <h2>Feature reference</h2>
+    <div id="featuresTable"></div>
+  </div>
+</section>
+
+<!-- ========================= RULES ========================= -->
+<section id="rules" class="tab-panel">
+  <div class="card">
+    <h2>Extracted fuzzy rules</h2>
+    <p class="muted">
+      Each rule is a learned IF–THEN statement from the trained ANFIS. LOW/MEDIUM/HIGH labels are derived
+      from the rule's Gaussian center in the normalized [0,1] feature space.
+    </p>
+    <div id="rulesList"></div>
+  </div>
+</section>
+
+<!-- ========================= ABOUT ========================= -->
+<section id="about" class="tab-panel">
+  <div class="card">
+    <h2>About this project</h2>
+    <p>
+      Final-year project at Bahria University Islamabad for the
+      <strong>Neural Networks &amp; Fuzzy Logic</strong> course (8A).
+    </p>
+    <p>
+      Goal: predict diabetes risk using <strong>ANN</strong> (accuracy-focused) and
+      <strong>ANFIS</strong> (interpretability-focused), with <strong>SHAP</strong> for transparency
+      — addressing the black-box and crisp-boundary limitations described in the proposal.
+    </p>
+    <h3>Methodology — 4 phases (as per proposal)</h3>
+    <ol>
+      <li><strong>Preprocessing</strong> — zero values replaced with median, min-max normalization, 80/20 stratified split.</li>
+      <li><strong>ANN</strong> — feed-forward MLP with ReLU hidden layers and Sigmoid output, trained with Adam.</li>
+      <li><strong>ANFIS</strong> — Takagi-Sugeno neuro-fuzzy with Gaussian membership functions, rules from Fuzzy C-Means clustering, consequents warm-started from logistic regression.</li>
+      <li><strong>Explainable AI</strong> — SHAP for per-feature attribution, plus extracted human-readable fuzzy rules from ANFIS.</li>
+    </ol>
+    <h3>Authors</h3>
+    <p>
+      <strong>Mavia Bin Wasad</strong> (01-134222-169) &nbsp;·&nbsp; <strong>Eeman Tariq</strong> (01-134222-182)<br>
+      Submitted to: <strong>Adnan Younas</strong>
+    </p>
+    <h3>Stack</h3>
+    <p class="muted">
+      Python 3 · TensorFlow/Keras · scikit-learn · scikit-fuzzy · SHAP · Flask · Chart.js
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>Diabetes Prediction — ANN + ANFIS + XAI &nbsp;·&nbsp; Bahria University Islamabad</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
