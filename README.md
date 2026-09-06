@@ -1,11 +1,7 @@
 # Diabetes Prediction using ANN, ANFIS and Explainable AI
 
-Full-stack web application implementing the proposal submitted to **Adnan Younas** at **Bahria University Islamabad** for the **Neural Networks & Fuzzy Logic** course (8A).
-
 **Authors:** Mavia Bin Wasad (01-134222-169) · Eeman Tariq (01-134222-182)
-
 ---
-
 ## What this app does
 
 A clinical-style web app that predicts diabetes risk using **two parallel models** and explains every prediction:
